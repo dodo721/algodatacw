@@ -6,6 +6,7 @@
 #define HEIGHT 6
 
 int currentStep = 0;
+int player = 1;
 
 struct Cell {
 	
@@ -48,16 +49,35 @@ struct Board newBoard (void) {
 void printBoard (struct Board board) {
 	for (int i = 0; i < HEIGHT; i++) {
 		for (int j = 0; j < WIDTH; j++) {
-			printf("[%d]", board.cells[i][j].state);
+			char* symbol = " ";
+			if (board.cells[i][j].state == 1) {
+				symbol = "x";
+			} else if (board.cells[i][j].state == 2) {
+				symbol = "o";
+			}
+			printf("[%s]", symbol);
 		}
 		printf("\n");
 	}
 }
 
-struct Board insertCell (struct Board board, int x, int y, int state) {
+struct Board insertCell (struct Board board, int x, int state) {
 	
+	if (x >= WIDTH) {
+		printf("X Coord is out of bounds!\n");
+		return board;
+	}
 	struct Cell newCell;
 	newCell.state = state;
+	int y = 0;
+	while (board.cells[y + 1][x].state == 0) {
+		if (y == HEIGHT - 2) {
+			if (board.cells[y + 1][x].state == 0)
+				y++;
+			break;
+		}
+		y++;
+	}
 	board.cells[y][x] = newCell;
 	return board;
 	
@@ -65,18 +85,42 @@ struct Board insertCell (struct Board board, int x, int y, int state) {
 
 void printMenu (void) {
 	
-	printf("1. Insert cell\n");
+	printf(
+		"0. Exit\n1. Insert cell\n"
+	);
 	
+}
+
+int getNum (void) {
+	int num = getchar();
+	num -= '0';
+	getchar();
+	return num;
 }
 
 int main (void) {
 	
 	struct Board board = newBoard();
-	printBoard(board);
-	printf("\n\n");
-	board = insertCell(board, 4, 3, 1);
-	printBoard(board);
-	printf("OK\n");
+	while (true) {
+		printBoard(board);
+		printf("\n\n");
+		printMenu();
+		int option = getNum();
+		if (option == 1) {
+			printf("Enter x coord: ");
+			int x = getNum() - 1;
+			board = insertCell(board, x, player);
+			if (player == 1)
+				player = 2;
+			else
+				player = 1;
+		} else if (option == 0) {
+			printf("Bye!");
+			break;
+		}
+	}
+	
+	printf("\nOK\n");
 	return 0;
 	
 }
