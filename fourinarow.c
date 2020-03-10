@@ -7,9 +7,6 @@
 #define WIDTH 7
 #define HEIGHT 6
 
-int currentStep = 0;
-int player = 1;
-
 struct Cell {
 	
 	int state;
@@ -25,64 +22,157 @@ struct Cell {
 	
 };
 
+struct Move {
+
+	int x;
+	int player;
+	struct Move *prev;
+	struct Move *next;
+
+};
+
+struct Move *history;
+
+void clearFutureMoves (void) {
+
+	if (history == NULL)
+		return;
+	struct Move *currentMove = history;
+	while (currentMove->next != NULL) {
+		currentMove = currentMove->next;
+		currentMove->prev->next = NULL;
+		if (currentMove->prev != history) {
+			free(currentMove->prev);
+		}
+	}
+
+	free(currentMove);
+
+}
+
+void newMove (int x, int player) {
+
+	struct Move move;
+	move.x = x;
+	move.player = player;
+	if (history == NULL)
+		move.prev = NULL;
+	else
+		move.prev = history;
+	move.next = NULL;
+	if (history != NULL)
+		if (history->next != NULL)
+			clearFutureMoves();
+	history = &move;
+
+}
+
+void clearHistory (void) {
+
+	if (history == NULL)
+		return;
+	while (history->prev != NULL)
+		history = history->prev;
+	while (history->next != NULL) {
+		history = history->next;
+		free(history->prev);
+	}
+	
+	free(history);
+	history = NULL;
+
+}
+
+struct Collumn {
+
+	struct Cell *cells;
+	int top;
+
+};
+
 struct Board {
 	
-	struct Cell **cells;
+	struct Collumn **collumns;
 	
 };
 
-struct Board newBoard (void) {
+struct Board board;
+
+void newBoard (void) {
 	
-	struct Board board;
-	board.cells = (struct Cell **)malloc(HEIGHT * sizeof(struct Cell *));
-	for (int i = 0; i < HEIGHT; i++) {
-		board.cells[i] = (struct Cell *)malloc(WIDTH * sizeof(struct Cell));
-		for (int j = 0; j < WIDTH; j++) {
+	struct Board newBoard;
+	newBoard.collumns = (struct Collumn **)malloc(WIDTH * sizeof(struct Collumn*));
+	for (int i = 0; i < WIDTH; i++) {
+		struct Collumn collumn;
+		collumn.top = 0;
+		collumn.cells = (struct Cell *)malloc(HEIGHT * sizeof(struct Cell));
+		newBoard.collumns[i] = &collumn;
+		for (int j = 0; j < HEIGHT; j++) {
 			struct Cell newCell;
 			newCell.state = 0;
 			newCell.checked = false;
-			board.cells[i][j] = newCell;
+			collumn.cells[j] = newCell;
 		}
 	}
-	return board;
+	printf("\n");
+	board = newBoard;
 	
 }
 
-void printBoard (struct Board board) {
-	for (int i = 0; i < HEIGHT; i++) {
+void printCell (struct Cell cell, int i, int j) {
+	char *symbol = " ";
+	if (cell.state == 1) {
+		symbol = "x";
+	} else if (cell.state == 2) {
+		symbol = "o";
+	}
+	printf("[%d,%d %s]", i,j,symbol);
+}
+
+void printBoard (void) {
+	for (int i = HEIGHT - 1; i >= 0; i --) {
 		for (int j = 0; j < WIDTH; j++) {
-			char* symbol = " ";
-			if (board.cells[i][j].state == 1) {
-				symbol = "x";
-			} else if (board.cells[i][j].state == 2) {
-				symbol = "o";
-			}
-			printf("[%s]", symbol);
+			printCell(board.collumns[j]->cells[i], j, i);
 		}
 		printf("\n");
 	}
 }
 
-struct Board insertCell (struct Board board, int x, int state) {
+void insertCell (int x, int state) {
 	
 	if (x >= WIDTH) {
 		printf("X Coord is out of bounds!\n");
-		return board;
+		return;
 	}
-	struct Cell newCell;
-	newCell.state = state;
-	int y = 0;
-	while (board.cells[y + 1][x].state == 0) {
-		if (y == HEIGHT - 2) {
-			if (board.cells[y + 1][x].state == 0)
-				y++;
-			break;
-		}
-		y++;
+	struct Collumn *collumn = board.collumns[x];
+	if (collumn->top < HEIGHT) {
+		printf("Inserting into collumn %d at top %d\n", x, collumn->top);
+		struct Cell newCell;
+		newCell.state = state;
+		collumn->cells[collumn->top] = newCell;
+		collumn->top++;
+		newMove(x, state);
+	} else {
+		printf("That collumn is full!\n");
 	}
-	board.cells[y][x] = newCell;
-	return board;
 	
+}
+
+void undo (void) {
+
+	if (history->prev != NULL) {
+		history = history->prev;
+		
+	}
+
+}
+
+void redo (void) {
+	
+	if (history->next != NULL) {
+		history = history->next;
+	}
+
 }
 
 void printMenu (void) {
@@ -105,11 +195,13 @@ int getNum (void) {
 	return menu;
 }
 
+int player = 1;
+
 int main (void) {
 	
-	struct Board board = newBoard();
+	newBoard();
 	while (true) {
-		printBoard(board);
+		printBoard();
 		printf("\n\n");
 		printMenu();
 		int option = getNum();
@@ -121,7 +213,7 @@ int main (void) {
 			if (x == -1)
 				continue;
 			x--;
-			board = insertCell(board, x, player);
+			insertCell(x, player);
 			if (player == 1)
 				player = 2;
 			else
