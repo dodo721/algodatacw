@@ -1,6 +1,8 @@
+#include <stdlib.h>
 #include <stdio.h>
 //#include <math.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 #define WIDTH 7
 #define HEIGHT 6
@@ -88,14 +90,19 @@ void printMenu (void) {
 	printf(
 		"0. Exit\n1. Insert cell\n"
 	);
-	
+
 }
 
 int getNum (void) {
-	int num = getchar();
-	num -= '0';
-	getchar();
-	return num;
+	printf("> ");
+	int menu;
+	int success = scanf(" %d", &menu);
+	while (getchar() != '\n');
+	if (success == 0) {
+		printf("Entry must be a number!\n\n");
+		return -1;
+	}
+	return menu;
 }
 
 int main (void) {
@@ -106,9 +113,14 @@ int main (void) {
 		printf("\n\n");
 		printMenu();
 		int option = getNum();
+		if (option == -1)
+			continue;
 		if (option == 1) {
 			printf("Enter x coord: ");
-			int x = getNum() - 1;
+			int x = getNum();
+			if (x == -1)
+				continue;
+			x--;
 			board = insertCell(board, x, player);
 			if (player == 1)
 				player = 2;
