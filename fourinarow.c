@@ -31,6 +31,15 @@ struct Move {
 };
 
 struct Move *history;
+int movesBehind = 0;
+
+void newHistory (void) {
+	free(history);
+	history = (struct Move *)malloc(sizeof(struct Move));
+	history->next = NULL;
+	history->prev = NULL;
+	history->x = -1;
+}
 
 int historySize (void) {
 	if (history == NULL) {
@@ -48,7 +57,7 @@ int historySize (void) {
 	}
 }
 
-int movesBehind (void) {
+int getMovesBehind (void) {
 	if (history == NULL)
 		return 0;
 	struct Move *temp = history;
@@ -72,7 +81,7 @@ void clearFutureMoves (void) {
 			free(currentMove->prev);
 		}
 	}
-
+	movesBehind = 0;
 	free(currentMove);
 
 }
@@ -151,6 +160,8 @@ char* getState(int state) {
 		return "x";
 	} else if (state == 2) {
 		return "o";
+	} else {
+		return "";
 	}
 }
 
@@ -197,21 +208,19 @@ int player = 1;
 void undo (void) {
 	
 	if (history != NULL) {
-		struct Move move;
 		if (history->prev != NULL) {
 			history = history->prev;
 			struct Move move = *history->next;
-		} else {
-			move = *history;
-		}
-		int x = move.x;
-		board.collumns[x].cells[board.collumns[x].top - 1].state = 0;
-		board.collumns[x].cells[board.collumns[x].top - 1].checked = false;
-		board.collumns[x].top--;
-		if (player == 1) {
-			player = 2;
-		} else {
-			player = 1;
+			int x = move.x;
+			board.collumns[x].cells[board.collumns[x].top - 1].state = 0;
+			board.collumns[x].cells[board.collumns[x].top - 1].checked = false;
+			board.collumns[x].top--;
+			if (player == 1) {
+				player = 2;
+			} else {
+				player = 1;
+			}
+			movesBehind ++;
 		}
 	}
 
@@ -231,6 +240,7 @@ void redo (void) {
 			} else {
 				player = 1;
 			}
+			movesBehind--;
 		}
 	}
 
@@ -239,7 +249,7 @@ void redo (void) {
 void printMenu (void) {
 	
 	printf("Player %s's turn\n", getState(player));
-	printf("%d moves behind\n", movesBehind());
+	printf("%d moves behind\n", movesBehind);
 	printf(
 		"0. Exit\n1. Insert cell\n2. Undo move\n3. Redo move\n"
 	);
@@ -260,8 +270,10 @@ int getNum (void) {
 
 int main (void) {
 	
+	newHistory();
 	newBoard();
 	while (true) {
+		printf("\n");
 		printBoard();
 		printf("\n\n");
 		printMenu();
