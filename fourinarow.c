@@ -32,6 +32,7 @@ struct Move {
 
 struct Move *history;
 int movesBehind = 0;
+int numMoves = 0;
 
 void newHistory (void) {
 	free(history);
@@ -45,7 +46,7 @@ int historySize (void) {
 	if (history == NULL) {
 		return 0;
 	} else {
-		int moves = 1;
+		int moves = 0;
 		struct Move *temp = history;
 		while (temp->next != NULL)
 			temp = temp->next;
@@ -81,8 +82,9 @@ void clearFutureMoves (void) {
 			free(currentMove->prev);
 		}
 	}
-	movesBehind = 0;
 	free(currentMove);
+	movesBehind = 0;
+	numMoves = historySize();
 
 }
 
@@ -98,6 +100,7 @@ void newMove (int x, int player) {
 		history->next = move;
 	}
 	history = move;
+	numMoves ++;
 
 }
 
@@ -114,6 +117,8 @@ void clearHistory (void) {
 	
 	free(history);
 	history = NULL;
+	movesBehind = 0;
+	numMoves = 0;
 
 }
 
@@ -189,13 +194,13 @@ void insertCell (int x, int state) {
 		printf("X Coord is out of bounds!\n");
 		return;
 	}
-	struct Collumn collumn = board.collumns[x];
-	if (collumn.top < HEIGHT) {
+	struct Collumn *collumn = &board.collumns[x];
+	if (collumn->top < HEIGHT) {
 		struct Cell newCell;
 		newCell.state = state;
-		collumn.cells[collumn.top] = newCell;
-		collumn.top++;
-		board.collumns[x] = collumn;
+		collumn->cells[collumn->top] = newCell;
+		collumn->top++;
+		//board.collumns[x] = collumn;
 		newMove(x, state);
 	} else {
 		printf("That collumn is full!\n");
@@ -246,6 +251,94 @@ void redo (void) {
 
 }
 
+struct SearchVector {
+
+	int x;
+	int y;
+	int size;
+
+};
+
+struct Coord {
+
+	int row;
+	int col;
+
+};
+
+bool vectorSearch (int row, int col, struct SearchVector *vector) {
+	
+	if (row + vector->x > WIDTH - 1 || row + vector->x < 0)
+		return false;
+	else if (col + vector->y > HEIGHT - 1 || col + vector->y < 0)
+		return false;
+	
+	int newRow = row + vector->x;
+	int newCol = col + vector->y;
+	struct Cell *me = &board.collumns[col].cells[row];
+	struct Cell *search = &board.collumns[newCol].cells[newRow];
+	me->checked = true;
+	search->checked = true;
+
+	if (search->checked == false && search->state == me->state) {
+		vector->size++;
+		if (vector->size == 3) {
+			return true;
+		} else {
+			return vectorSearch(newRow, newCol, vector);
+		}
+	} else {
+		return false;
+	}
+
+}
+
+bool searchFromCell (int row, int col) {
+
+	struct SearchVector vector;
+	
+	for (vector.x = -1; vector.x < 2; vector.x ++) {
+		for (vector.y = -1; vector.y < 2; vector.y ++) {
+			if (vector.x == 0 && vector.y == 0)
+				continue;
+			vector.size = 0;
+			if (vectorSearch(row, col, &vector))
+				return true;
+		}
+	}
+
+	return false;
+
+}
+
+// 0 - no one has won
+// 1 - player 1 has won
+// 2 - player 2 has won
+int haveWon (void) {
+	if (numMoves < 7)
+		return 0;
+	for (int row = 0; row < HEIGHT; row ++) {
+		for (int col = 0; col < WIDTH; col ++) {
+			struct Cell *cell = &board.collumns[col].cells[row];
+			if (cell->state != 0 && !cell->checked) {
+				if (searchFromCell(row, col))
+					return cell->state;
+			}
+		}
+	}
+	return 0;
+}
+
+int checkWinAndClear (void) {
+	int winner = haveWon();
+	for (int i = 0; i < WIDTH; i++) {
+		for (int j = 0; j < HEIGHT; j ++) {
+			board.collumns[i].cells[j].checked = false;
+		}
+	}
+	return winner;
+}
+
 void printMenu (void) {
 	
 	printf("Player %s's turn\n", getState(player));
@@ -287,6 +380,11 @@ int main (void) {
 				continue;
 			x--;
 			insertCell(x, player);
+			int winner = checkWinAndClear();
+			if (winner != 0) {
+				printf("Player %s is the winner!\n", getState(winner));
+				break;
+			}
 			if (player == 1)
 				player = 2;
 			else
