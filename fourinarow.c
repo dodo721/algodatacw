@@ -10,14 +10,6 @@
 struct Cell {
 	
 	int state;
-	/*struct cell *u;
-	struct cell *d;
-	struct cell *l;
-	struct cell *r;
-	struct cell *dlu;
-	struct cell *dld;
-	struct cell *dru;
-	struct cell *drd;*/
 	bool checked;
 	
 };
@@ -188,11 +180,11 @@ void printBoard (void) {
 	}
 }
 
-void insertCell (int x, int state) {
+int insertCell (int x, int state) {
 	
 	if (x >= WIDTH) {
 		printf("X Coord is out of bounds!\n");
-		return;
+		return -1;
 	}
 	struct Collumn *collumn = &board.collumns[x];
 	if (collumn->top < HEIGHT) {
@@ -202,8 +194,10 @@ void insertCell (int x, int state) {
 		collumn->top++;
 		//board.collumns[x] = collumn;
 		newMove(x, state);
+		return collumn->top - 1;
 	} else {
 		printf("That collumn is full!\n");
+		return -1;
 	}
 	
 }
@@ -272,22 +266,25 @@ bool vectorSearch (int row, int col, struct SearchVector *vector) {
 		return false;
 	else if (col + vector->y > HEIGHT - 1 || col + vector->y < 0)
 		return false;
-	
+
 	int newRow = row + vector->x;
 	int newCol = col + vector->y;
 	struct Cell *me = &board.collumns[col].cells[row];
 	struct Cell *search = &board.collumns[newCol].cells[newRow];
+	//printf("Searching %d,%d...\n", newRow, newCol);
 	me->checked = true;
-	search->checked = true;
 
 	if (search->checked == false && search->state == me->state) {
 		vector->size++;
+		//printf("Vector %d,%d size %d\n", vector->x, vector->y, vector->size);
+		search->checked = true;
 		if (vector->size == 3) {
 			return true;
 		} else {
 			return vectorSearch(newRow, newCol, vector);
 		}
 	} else {
+		search->checked = true;
 		return false;
 	}
 
@@ -296,7 +293,7 @@ bool vectorSearch (int row, int col, struct SearchVector *vector) {
 bool searchFromCell (int row, int col) {
 
 	struct SearchVector vector;
-	
+	//printf("Initiating search at %d, %d\n", row, col);
 	for (vector.x = -1; vector.x < 2; vector.x ++) {
 		for (vector.y = -1; vector.y < 2; vector.y ++) {
 			if (vector.x == 0 && vector.y == 0)
@@ -311,32 +308,12 @@ bool searchFromCell (int row, int col) {
 
 }
 
-// 0 - no one has won
-// 1 - player 1 has won
-// 2 - player 2 has won
-int haveWon (void) {
-	if (numMoves < 7)
-		return 0;
-	for (int row = 0; row < HEIGHT; row ++) {
-		for (int col = 0; col < WIDTH; col ++) {
-			struct Cell *cell = &board.collumns[col].cells[row];
-			if (cell->state != 0 && !cell->checked) {
-				if (searchFromCell(row, col))
-					return cell->state;
-			}
+void clearChecked (void) {
+	for (int i = 0; i < HEIGHT; i ++) {
+		for (int j = 0; j < WIDTH; j++) {
+			board.collumns[j].cells[i].checked = false;
 		}
 	}
-	return 0;
-}
-
-int checkWinAndClear (void) {
-	int winner = haveWon();
-	for (int i = 0; i < WIDTH; i++) {
-		for (int j = 0; j < HEIGHT; j ++) {
-			board.collumns[i].cells[j].checked = false;
-		}
-	}
-	return winner;
 }
 
 void printMenu (void) {
@@ -361,6 +338,11 @@ int getNum (void) {
 	return menu;
 }
 
+void newGame (void) {
+	newHistory();
+	newBoard();
+}
+
 int main (void) {
 	
 	newHistory();
@@ -379,9 +361,17 @@ int main (void) {
 			if (x == -1)
 				continue;
 			x--;
-			insertCell(x, player);
-			int winner = checkWinAndClear();
+			if (x <= -1) {
+				printf("X is out of bounds!\n");
+				continue;
+			}
+			int y = insertCell(x, player);
+			int winner = searchFromCell(y, x);
+			clearChecked();
 			if (winner != 0) {
+				printf("\n");
+				printBoard();
+				printf("\n");
 				printf("Player %s is the winner!\n", getState(winner));
 				break;
 			}
