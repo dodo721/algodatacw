@@ -366,13 +366,13 @@ int main (void) {
 				continue;
 			}
 			int y = insertCell(x, player);
-			int winner = searchFromCell(y, x);
+			bool winner = searchFromCell(y, x);
 			clearChecked();
-			if (winner != 0) {
+			if (winner) {
 				printf("\n");
 				printBoard();
 				printf("\n");
-				printf("Player %s is the winner!\n", getState(winner));
+				printf("Player %s is the winner!\n", getState(player));
 				break;
 			}
 			if (player == 1)
